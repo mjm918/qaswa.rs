@@ -1,6 +1,7 @@
 use std::future::ready;
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use axum::error_handling::HandleErrorLayer;
 use axum::{middleware, Router};
@@ -8,10 +9,10 @@ use axum::routing::get;
 use tower::ServiceBuilder;
 use tower_http::ServiceBuilderExt;
 use tower_http::services::ServeDir;
-use tracing::{error, info};
+use tracing::{error, info, trace};
 use utility::env::Variables;
 use utility::errors::AppResult;
-use crate::{handlers, routes};
+use crate::{APP_NAME, handlers, routes};
 use crate::certs::init_ssl_certs;
 use crate::layers::auth::BasicAuthLayer;
 use crate::layers::prometheus::PrometheusMetric;
@@ -26,6 +27,18 @@ pub async fn serve() -> AppResult<()> {
 	let settings = Variables::from_env()?;
 	// Init Flinch Db
 	let mem_db = get_flinch().await;
+	// Setup Postgres
+	trace!("installing or starting postgres...");
+	let mut pg_server = db::setup::install_postgres().await?;
+	match pg_server.create_database(APP_NAME).await {
+		Ok(_) => {}
+		Err(err) => {
+			error!("{:?}",err);
+		}
+	}
+	let pg_uri = pg_server.full_db_uri(APP_NAME);
+	let pg = Arc::new(db::setup::get_connection(pg_uri.as_str()).await?);
+	info!("postgres uri {}",pg_uri);
 	// Tracing
 	// -------
 	crate::logger::init(&settings.environment, &settings.log_path, &settings.log_file)?;
@@ -43,11 +56,12 @@ pub async fn serve() -> AppResult<()> {
 		.timeout(Duration::from_secs(settings.request_timeout))
 		.propagate_x_request_id();
 
-	let state = SharedState::new(State::init(settings.clone(), mem_db));
+	let pg_server_locked = Arc::new(Mutex::new(pg_server));
+	let state = SharedState::new(State::init(settings.clone(), mem_db, Arc::clone(&pg_server_locked), pg));
 	// Routing - API
 	// -------------
 	let mut app = Router::new()
-		.nest("/api/v1", routes::api(state.clone()).layer(cors));
+		.nest("/", routes::api(state.clone()).layer(cors));
 
 	// Prometheus metrics
 	// ------------------
@@ -80,7 +94,7 @@ pub async fn serve() -> AppResult<()> {
 	}
 
 	app = app
-		.fallback_service(ServeDir::new("assets").append_index_html_on_directories(true)) // FIXME: static_file_error not work this Axum 0.6.9!
+		.fallback_service(ServeDir::new("templates/html").append_index_html_on_directories(true)) // FIXME: static_file_error not work this Axum 0.6.9!
 		.layer(middleware::from_fn(crate::util::override_http_errors))
 		.layer(layers);
 	let app = app.with_state(state);
@@ -101,7 +115,7 @@ pub async fn serve() -> AppResult<()> {
 		let server =
 			axum::Server::bind(&addr.parse()?)
 				.serve(app.into_make_service_with_connect_info::<SocketAddr>());
-		Ok(server.with_graceful_shutdown(shutdown_signal()).await?)
+		Ok(server.with_graceful_shutdown(shutdown_signal(Arc::clone(&pg_server_locked))).await?)
 
 	} else {
 		let tls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(
@@ -110,7 +124,7 @@ pub async fn serve() -> AppResult<()> {
 		).await?;
 		let gch = axum_server::Handle::new();
 
-		tokio::spawn(graceful_shutdown(gch.clone()));
+		tokio::spawn(graceful_shutdown(gch.clone(),Arc::clone(&pg_server_locked)));
 
 		let server = axum_server::bind_rustls(addr.parse()?, tls_config)
 			.handle(gch)

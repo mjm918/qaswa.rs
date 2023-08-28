@@ -15,7 +15,7 @@ mod controller;
 pub mod cli;
 mod extension;
 
-pub const APP_NAME: &str = "EasySales-Server";
+pub const APP_NAME: &str = "qaswa";
 pub const RATE_LIMITER_BUCKET: &str = "rate-limiter-rate";
 pub const GENERAL_BUCKET: &str = "general-bucket";
 pub const SECONDS_DURATION_BUCKETS: &[f64; 11] = &[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0];

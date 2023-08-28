@@ -1,9 +1,10 @@
-use std::sync::Arc;
+use std::sync::{Arc, LockResult, Mutex};
 use std::time::Duration;
 use flinch::database::Database;
 use flinch::doc::QueryBased;
 use tokio::signal;
-use tracing::info;
+use tracing::{error, info};
+use db::setup::PgServer;
 use crate::{APP_NAME, GENERAL_BUCKET, RATE_LIMITER_BUCKET};
 
 pub async fn get_flinch() -> Arc<Database<QueryBased>> {
@@ -25,7 +26,17 @@ pub async fn get_flinch() -> Arc<Database<QueryBased>> {
 }
 
 #[allow(unused)]
-pub async fn graceful_shutdown(handle: axum_server::Handle) {
+pub async fn graceful_shutdown(handle: axum_server::Handle, mut pg_server: Arc<Mutex<PgServer>>) {
+	// Stop postgres first
+	match pg_server.lock() {
+		Ok(mut server) => {
+			server.stop_db_sync();
+		}
+		Err(err) => {
+			error!("{:?}",err);
+		}
+	}
+
 	let ctrl_c = async {
 		signal::ctrl_c().await.expect("failed to install Ctrl+C handlers");
 	};
@@ -50,7 +61,17 @@ pub async fn graceful_shutdown(handle: axum_server::Handle) {
 }
 
 #[allow(unused)]
-pub async fn shutdown_signal() {
+pub async fn shutdown_signal(pg_server: Arc<Mutex<PgServer>>) {
+	// Stop postgres first
+	match pg_server.lock() {
+		Ok(mut server) => {
+			server.stop_db_sync();
+		}
+		Err(err) => {
+			error!("{:?}",err);
+		}
+	}
+
 	let ctrl_c = async {
 		signal::ctrl_c().await.expect("failed to install Ctrl+C handlers");
 	};

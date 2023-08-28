@@ -22,7 +22,7 @@ pub async fn health_check() -> AppResult<Html<String>> {
 		TEMPLATES
 			.as_ref()
 			.map_err(|err| AppError::internal(AppError::InternalError { message: err.to_string() }))?
-			.render("doc/index.html", &Context::new())
+			.render("html/index.html", &Context::new())
 			.map_err(|err| AppError::internal(AppError::InternalError { message: err.to_string() }))?,
 	))
 }
