@@ -17,6 +17,7 @@ derive_more = { workspace=true }
 dotenvy = "0.15.7"
 eyre = { workspace=true }
 flinch = { workspace=true }
+hyper = { workspace=true }
 nix = "0.26.2"
 pg-embed = { workspace=true }
 passwords = { version="3.1.13", features = ["common-password"] }

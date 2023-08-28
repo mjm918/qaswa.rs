@@ -14,6 +14,7 @@ pub struct Variables {
 
 	/// Path of log files
 	pub log_path: String,
+	pub log_file: String,
 
 	/// Postgres Config
 	pub db_path: String,
@@ -29,7 +30,7 @@ pub struct Variables {
 
 	///JWT
 	pub jwt_secret_key: String,
-	pub jwt_lifetime: u64,
+	pub jwt_lifetime: i64,
 
 	/// CORS
 	pub cors_allow_origin: String,
@@ -42,6 +43,15 @@ pub struct Variables {
 
 	/// Prometheus metrics enabled
 	pub prometheus_metrics_enabled: bool,
+
+	/// Basic Auth
+	pub basic_user: String,
+	pub basic_pw: String,
+
+	/// Server URL
+	pub server_url: String,
+	pub server_port: u16,
+	pub request_timeout: u64,
 }
 
 impl Default for Variables {
@@ -50,6 +60,7 @@ impl Default for Variables {
 			environment: format!("production"),
 			rust_log: format!("trace,sqlx=error,config=trace"),
 			log_path: format!("./qaswa-log"),
+			log_file: format!("qaswa"),
 			db_path: format!("./qaswa-data"),
 			db_user: format!("postgres"),
 			db_pw: format!("password"),
@@ -66,6 +77,11 @@ impl Default for Variables {
 			limiter_expire_in_seconds: 30,
 			limiter_white_list: "".to_string(),
 			prometheus_metrics_enabled: true,
+			basic_user: "root".to_string(),
+			basic_pw: "qaswa123@".to_string(),
+			server_url: "0.0.0.0".to_string(),
+			server_port: 9097,
+			request_timeout: 10,
 		}
 	}
 }

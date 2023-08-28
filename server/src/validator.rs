@@ -2,8 +2,9 @@
 
 use serde_json::json;
 use validator::Validate;
+use tracing::error;
 use utility::app_error;
-use utility::errors::AppResult;
+use utility::errors::{AppResult,AppErrorCode, AppError};
 
 /// Validate the HTTP request parameters
 pub fn validate_request_data<T: Validate>(data: &T) -> AppResult<()> {

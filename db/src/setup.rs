@@ -65,7 +65,6 @@ pub async fn install_postgres() -> AppResult<PgServer> {
 		std::thread::sleep(Duration::from_secs(3));
 		pg.start_db().await?;
 	}
-
 	Ok(pg)
 }
 

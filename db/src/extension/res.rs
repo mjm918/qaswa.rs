@@ -1,6 +1,10 @@
-use serde_json::{Value};
+use serde_json::Value;
 use sqlx::postgres::PgRow;
-use crate::extension::ResultSet;
+use crate::pgrow::SPgRowMap;
+
+pub trait ResultSet {
+	fn result_array(self) -> Vec<Value>;
+}
 
 impl ResultSet for Vec<PgRow> {
 	fn result_array(self) -> Vec<Value> {

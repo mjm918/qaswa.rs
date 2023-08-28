@@ -1,3 +1,4 @@
+use std::net::AddrParseError;
 use axum::{
 	http::StatusCode,
 	Json,
@@ -174,6 +175,24 @@ impl From<DbError> for AppError {
 	}
 }
 
+impl From<AddrParseError> for AppError {
+	fn from(value: AddrParseError) -> Self {
+		error!("[S109] {:?}",&value);
+		Self::InternalError {
+			message: format!("[S109] {:?}",&value)
+		}
+	}
+}
+
+impl From<hyper::Error> for AppError {
+	fn from(value: hyper::Error) -> Self {
+		error!("[S110] {:?}",&value);
+		Self::InternalError {
+			message: format!("[S110] {:?}",&value)
+		}
+	}
+}
+
 impl From<sqlx::Error> for AppError {
 	fn from(value: Error) -> Self {
 		error!("[E304] {:?}",&value);
@@ -199,7 +218,6 @@ impl From<flinch::headers::FlinchError> for AppError {
 		}
 	}
 }
-
 
 #[macro_export]
 macro_rules! app_error {
